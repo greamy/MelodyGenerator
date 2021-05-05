@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import javax.sound.midi.MidiSystem;
+import javax.sound.midi.MidiUnavailableException;
 import javax.sound.midi.Synthesizer;
 import javax.sound.midi.MidiChannel;
 
@@ -55,7 +56,10 @@ public class AudioPlayer {
             Thread.sleep(1000); // This allows for time for final note to ring out
             // For some reason, without sleep here, the final note gets cut short.
         }
-        catch(Exception e){ // Thread.sleep() throws an InterruptedException, and the midi and synth have their own exceptions.
+        catch(InterruptedException e){ // Thread.sleep() throws an InterruptedException, and the midi and synth have their own exceptions.
+            throw new RuntimeException(e);
+        }
+        catch(MidiUnavailableException e){
             throw new RuntimeException(e);
         }
     }

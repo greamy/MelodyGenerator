@@ -14,6 +14,7 @@ public class Generator {
     private final ArrayList<String> allNotes = new ArrayList<>();
     public final ArrayList<Double> probabilities = new ArrayList<>();
     private final ArrayList<Measure> melody = new ArrayList<>();
+    private final ArrayList<Integer> pascalRow = new ArrayList<>();
     private String prevNote;
 
     private final int numMeasures;
@@ -38,8 +39,8 @@ public class Generator {
         System.out.println("keySig = " + keySig);
 
         start();
-        int startIndex = (int)(Math.random() * (allNotes.size())); //Random note within range of notes
-        prevNote = allNotes.get(startIndex); // Defines a starting note
+        genPascalRow();
+        System.out.println("pascalRow = " + pascalRow);
         System.out.println("startNote = " + prevNote);
     }
 
@@ -66,6 +67,13 @@ public class Generator {
             allNotes.add(Integer.toString(currOctave) + currNote);
         }
         System.out.println(allNotes);
+
+        for (int i = 0; i < allNotes.size(); i++) { //This sets the first note to the key center (tonic/the first note of the scale.))
+            if(allNotes.get(i).substring(1).equals(keyCenter)){
+                prevNote = allNotes.get(i);
+                break;
+            }
+        }
     }
 
     // Sets key signature for use in creating list of all possible notes.
@@ -151,86 +159,79 @@ public class Generator {
     // Helper method to ensure probabilities add to 1.0
     public double getSum(){
         double sum = 0;
-        for (Double probablity : probabilities) {
-            sum += probablity;
+        for (double probability : probabilities) {
+            sum += probability;
         }
         return sum;
     }
 
     public void pascalProbs(){
         probabilities.clear();    //Setup variables and function calls.
-        ArrayList<Integer> pascalRow = getPascalRow();
 
-        double total = 0;
-        for (int val: pascalRow) {  //Calculates the sum of all the pascal triangle numbers.
-            total += val;
-        }
-        ArrayList<Double> pascalProb = new ArrayList<>();
-        for (int val: pascalRow) { //Defines array with values resembling a normal Distribution, based on pascal's triangle
-            pascalProb.add(val/total);
+        for (int val: pascalRow) {
             probabilities.add(0.0); // Adds values into probabilities array to use 'set' method later.
         }
 
+        ArrayList<Integer> tempRow = new ArrayList<>();
+        tempRow.addAll(pascalRow);
         int prevIndex = allNotes.indexOf(prevNote);
-        double max = Collections.max(pascalProb); //Determines max value in prob array to set rearrange around prev note.
-        pascalProb.remove(pascalProb.indexOf(max));
+        System.out.println("prevIndex = " + prevIndex);
+        double max = Collections.max(tempRow); //Determines max value in prob array to set rearrange around prev note.
+        tempRow.remove(tempRow.indexOf((int)max));
+        probabilities.set(prevIndex, max); //Sets the highest value, first to allow easier looping.
 
-        for (int i = 0; i < prevIndex; i++) {  //This loop starts at prev index, and moves down the array setting each prob.
-            probabilities.set(prevIndex-i, max);
-            max = Collections.max(pascalProb);
-            pascalProb.remove(pascalProb.indexOf(max));
+        for (int i = 1; i < probabilities.size(); i++) {
+            if(prevIndex-i >= 0) {
+                max = Collections.max(tempRow);
+                tempRow.remove(tempRow.indexOf((int)max));
+                probabilities.set(prevIndex - i, max);
+            }
+
+            if(prevIndex+i <= probabilities.size()-1) {
+                max = Collections.max(tempRow);
+                tempRow.remove(tempRow.indexOf((int)max));
+                probabilities.set(prevIndex + i, max);
+            }
         }
+        adjustProb(prevIndex, repeatFactor);
 
-        for (int i = prevIndex+1; i < probabilities.size(); i++) { //This loop does the same as prev, but moves up the array instead.
-            probabilities.set(i, max);
-            max = Collections.max(pascalProb);
-            pascalProb.remove(pascalProb.indexOf(max));
+        double total = getSum();
+        for (double val : probabilities) {
+            probabilities.set(probabilities.indexOf(val), val/total);
         }
+        System.out.println("probabilities = " + probabilities);
 
-        probabilities.set(probabilities.indexOf(0.0), max); // Because max is gotten after setting of probability,
-        // We need one more set wherever the last 0 is (on either the first or last index of array).
-
-        reduceRepeat(prevIndex);
         if(getSum() <= 0.985){
             System.out.println("Probability generation failed, getSum() != 1.");
         }
     }
 
-    private int calcFactorial(int num){
-        int sum = num;
-        if(num==0){
+    private long fact(int n){
+        long sum = n;
+        if(n==0){
             return 1;
         }
-        for (int j = num-1; j > 0; j--) {
+        for (int j = n-1; j > 0; j--) {
             sum *= j;
         }
         return sum;
     }
 
-    private ArrayList<Integer> getPascalRow(){
+    private void genPascalRow(){ //Generates row of pascals triangle with enough values for each note within given range.
         int amt = allNotes.size();
         int row = amt-1;
-        int rowFact = calcFactorial(row);
-
-        ArrayList<Integer> pascalRow = new ArrayList<>();
+        
         for (int i = 0; i < amt; i++) { //Gets an array with values equal to a row of the pascal triangle.
-            pascalRow.add(rowFact/((calcFactorial(row-i))*calcFactorial(i))); // Essentially 'amt choose i', using factorials to perform choose function
+            int result = (int)(fact(row)/(fact(i)*fact(row-i)));
+            pascalRow.add(result); // Essentially 'amt choose i', using factorials to perform choose function
         }
-        return pascalRow;
     }
 
     //Reduces chance of repeat note (Otherwise it would be the most common thing to happen).
-    private void reduceRepeat(int prevIndex){
-        double max = probabilities.get(prevIndex);
-        double newMax = max * repeatFactor;
-        probabilities.set(prevIndex, newMax);
-
-        double diff = (max-newMax)/2; //Figures out value to add back into probability array, /2 because adding to two values.
-        if(prevIndex+1 <= probabilities.size()-1) probabilities.set(prevIndex+1, probabilities.get(prevIndex+1)+diff); //This adds half of removed value one above prevIndex
-        else probabilities.set(prevIndex-2, probabilities.get(prevIndex-2)+diff); //If there is no value above, it just adds one and two below.
-
-        if(prevIndex-1 >= 0) probabilities.set(prevIndex-1, probabilities.get(prevIndex-1)+diff); //Same as above, but reversed for the other side.
-        else probabilities.set(prevIndex+2, probabilities.get(prevIndex+2)+diff);
+    private void adjustProb(int index, double factor){
+        double max = probabilities.get(index);
+        double newMax = max * factor;
+        probabilities.set(index, newMax);
     }
 
     public ArrayList<Note> getNotes(){
