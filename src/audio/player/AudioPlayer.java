@@ -68,6 +68,7 @@ public class AudioPlayer {
     // returns nothing.
     private void play(Note note) throws InterruptedException{
         String noteName = note.noteName;
+        System.out.println("noteName = " + noteName);
         if(noteName.equals("R")){ // Checks for rest, and sleeps if it is rest.
             System.out.println("REST!");
             Thread.sleep(note.toMiliseconds(bpm));

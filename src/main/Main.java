@@ -22,10 +22,10 @@ public class Main {
 
             System.out.println("Finally, please enter the key signature for the melody (All inputs assumed to be a major key):");
 //            String keySig = input.next();
-            String keySig = "Bb";
+            String keySig = "C";
 
             try {
-                gen = new Generator(start, end, keySig, 1, 0.8);
+                gen = new Generator(start, end, keySig, 16, 0.75);
             }
             catch(InvalidParameterException e){
                 System.out.println(e);
